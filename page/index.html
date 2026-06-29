@@ -330,39 +330,28 @@ for (const st of data.stations) {
   }
 }
 
-// ── 坐标轴标注 ───────────────────────────────
-const axisGroup = new THREE.Group();
-scene.add(axisGroup);
-const axisOrigin = new THREE.Vector3(-250, GROUND_Y, 520);
-const axisLen = 120;
-
-// X 轴（红）
-const xLineGeo = new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(axisLen, 0, 0))]);
-axisGroup.add(new THREE.Line(xLineGeo, new THREE.LineBasicMaterial({ color: '#ff4444', linewidth: 2 })));
-// Z 轴（蓝）
-const zLineGeo = new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(0, 0, axisLen))]);
-axisGroup.add(new THREE.Line(zLineGeo, new THREE.LineBasicMaterial({ color: '#4488ff', linewidth: 2 })));
-// Y 轴（绿）
-const yLineGeo = new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(0, axisLen, 0))]);
-axisGroup.add(new THREE.Line(yLineGeo, new THREE.LineBasicMaterial({ color: '#44ff44', linewidth: 2 })));
-
-// 轴标签
-function addAxisLabel(text, pos, color) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  div.style.cssText = `color:${color};font-size:11px;font-weight:700;text-shadow:0 0 4px rgba(0,0,0,0.9);pointer-events:none;`;
-  const lbl = new CSS2DObject(div);
-  lbl.position.copy(pos);
-  lbl.userData = { isLabel: true };
-  labelGroup.add(lbl);
-}
-addAxisLabel('X', axisOrigin.clone().add(new THREE.Vector3(axisLen + 12, 0, 0)), '#ff4444');
-addAxisLabel('Y', axisOrigin.clone().add(new THREE.Vector3(0, axisLen + 12, 0)), '#44ff44');
-addAxisLabel('Z', axisOrigin.clone().add(new THREE.Vector3(0, 0, axisLen + 12)), '#4488ff');
-
 // ── CSS 标签 ──────────────────────────────────
 const labelGroup = new THREE.Group();
 scene.add(labelGroup);
+
+// ── 坐标轴标注 ───────────────────────────────
+const axisGroup = new THREE.Group(); scene.add(axisGroup);
+const axisOrigin = new THREE.Vector3(-250, GROUND_Y, 520);
+const axisLen = 120;
+
+axisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(axisLen,0,0))]), new THREE.LineBasicMaterial({color:'#ff4444'})));
+axisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(0,0,axisLen))]), new THREE.LineBasicMaterial({color:'#4488ff'})));
+axisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(0,axisLen,0))]), new THREE.LineBasicMaterial({color:'#44ff44'})));
+
+for (const [label, color, dx, dy, dz] of [['X','#ff4444',axisLen+12,0,0], ['Y','#44ff44',0,axisLen+12,0], ['Z','#4488ff',0,0,axisLen+12]]) {
+  const div = document.createElement('div');
+  div.textContent = label;
+  div.style.cssText = `color:${color};font-size:11px;font-weight:700;text-shadow:0 0 4px rgba(0,0,0,0.9);pointer-events:none;`;
+  const lbl = new CSS2DObject(div);
+  lbl.position.copy(axisOrigin.clone().add(new THREE.Vector3(dx, dy, dz)));
+  lbl.userData = { isLabel: true };
+  labelGroup.add(lbl);
+}
 
 // 站点标签（含层级数和坐标）
 for (const st of data.stations) {
