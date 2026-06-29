@@ -529,7 +529,7 @@ function drawNavHighlight() {
       const p0 = pts[Math.min(pi, pts.length-1)], p1 = pts[Math.min(pi+1, pts.length-1)];
       const bx = p0.x + (p1.x - p0.x) * t, bz = p0.z + (p1.z - p0.z) * t;
       const bs = w2s(bx, bz);
-      ctx.beginPath(); ctx.arc(bs.x, bs.y, 6, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(bs.x, bs.y, 3, 0, Math.PI*2);
       ctx.fillStyle = '#fff'; ctx.fill();
     }
   }
