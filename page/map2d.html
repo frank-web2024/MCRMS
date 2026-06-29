@@ -84,11 +84,11 @@ let viewX=0, viewY=0, zoom=1;
 let dragging=false, dx0=0, dy0=0, vx0=0, vy0=0;
 const PAD = 80;
 
+// 世界边界
+const mx=-3071, Mx=3071, mz=-3071, Mz=3071;
+const dw=Mx-mx, dh=Mz-mz;
 const allX = data.stations.flatMap(s=>s.levels.map(l=>l.coordinate.x));
 const allZ = data.stations.flatMap(s=>s.levels.map(l=>l.coordinate.z));
-const mx = Math.min(...allX), Mx = Math.max(...allX);
-const mz = Math.min(...allZ), Mz = Math.max(...allZ);
-const dw = (Mx-mx)||100, dh = (Mz-mz)||100;
 
 function fitView() {
   const sw=window.innerWidth, sh=window.innerHeight;
@@ -166,13 +166,7 @@ function render(){
 
   // ── 地板背景图 ──
   if(bgImgs.every(i=>i)){
-    const bx0=Math.min(...allX), bx1=Math.max(...allX);
-    const bz0=Math.min(...allZ), bz1=Math.max(...allZ);
-    const cx=(bx0+bx1)/2, cz=(bz0+bz1)/2;
-    // 统一用较大的数据跨度 + padding 作为正方形边长
-    const pad=70;
-    const half = Math.max(bx1-bx0, bz1-bz0)/2 + pad;
-    // 2x2 正方形格子
+    const cx=0, cz=0, half=3071;
     const cell=half;
     const slots2d=[
       {i:0, x:cx+cell/2, z:cz+cell/2}, // 地图1 ++
