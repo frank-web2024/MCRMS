@@ -2,62 +2,27 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>轨道交通地图 · 2D</title>
 <style>
-  :root {
-    --bg: #1a1d23;
-    --panel-bg: rgba(26,29,35,0.92);
-    --text: #e0e0e0;
-    --text-dim: #999;
-    --accent: #4fc3f7;
-  }
+  :root { --bg:#1a1d23; --panel-bg:rgba(26,29,35,0.92); --text:#e0e0e0; --text-dim:#999; --accent:#4fc3f7; }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif; }
-  #canvas { display:block; cursor:grab; }
-  #canvas:active { cursor:grabbing; }
-
-  #top-bar {
-    position:fixed; top:16px; left:16px; right:16px; z-index:10;
-    display:flex; gap:12px; align-items:center; pointer-events:none;
-  }
-  #top-bar > * { pointer-events:auto; }
-  #title-card {
-    background:var(--panel-bg); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,0.08); border-radius:12px;
-    padding:12px 20px; color:var(--text);
-  }
+  canvas { display:block; cursor:grab; }
+  canvas:active { cursor:grabbing; }
+  #top-bar { position:fixed; top:16px; left:16px; right:16px; z-index:10; display:flex; gap:12px; align-items:center; pointer-events:none; }
+  #top-bar>* { pointer-events:auto; }
+  #title-card { background:var(--panel-bg); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 20px; color:var(--text); }
   #title-card h1 { font-size:18px; font-weight:600; }
   #title-card span { font-size:12px; color:var(--text-dim); }
-
-  #legend {
-    position:fixed; bottom:24px; left:16px; z-index:10;
-    background:var(--panel-bg); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,0.08); border-radius:12px;
-    padding:14px 18px; color:var(--text); min-width:180px;
-  }
+  #legend { position:fixed; bottom:24px; left:16px; z-index:10; background:var(--panel-bg); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px 18px; color:var(--text); min-width:180px; }
   #legend h3 { font-size:13px; font-weight:600; margin-bottom:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; }
   .legend-item { display:flex; align-items:center; gap:10px; margin-bottom:7px; font-size:13px; }
   .legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
   .legend-badge { font-size:10px; padding:1px 6px; border-radius:4px; background:rgba(255,255,255,0.1); color:var(--text-dim); margin-left:auto; }
-
-  #hint {
-    position:fixed; bottom:24px; right:24px; z-index:10;
-    background:var(--panel-bg); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,0.08); border-radius:12px;
-    padding:10px 16px; color:var(--text-dim); font-size:12px;
-    pointer-events:none; user-select:none;
-  }
+  #hint { position:fixed; bottom:24px; right:24px; z-index:10; background:var(--panel-bg); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px 16px; color:var(--text-dim); font-size:12px; pointer-events:none; user-select:none; }
   #hint span { color:var(--accent); }
-
-  #tooltip {
-    position:fixed; z-index:20; pointer-events:none; opacity:0;
-    background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,0.15); border-radius:10px;
-    padding:12px 16px; color:#fff; font-size:13px; line-height:1.6;
-    transform:translate(-50%,-120%); transition:opacity 0.15s;
-    white-space:nowrap;
-  }
+  #tooltip { position:fixed; z-index:20; pointer-events:none; opacity:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:12px 16px; color:#fff; font-size:13px; line-height:1.6; transform:translate(-50%,-120%); transition:opacity 0.15s; white-space:nowrap; }
   #tooltip.visible { opacity:1; }
   #tooltip .tt-name { font-size:15px; font-weight:600; margin-bottom:4px; }
   #tooltip .tt-line { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; margin-right:4px; color:#fff; }
@@ -65,47 +30,29 @@
 </style>
 </head>
 <body>
-
 <canvas id="canvas"></canvas>
-
 <div id="top-bar">
-  <div id="title-card">
-    <h1 id="network-name">轨道交通</h1>
-    <span id="update-info"></span>
-  </div>
-  <a href="index.html" style="
-    background:var(--panel-bg); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,0.12); border-radius:10px;
-    padding:10px 16px; color:var(--text); font-size:13px;
-    text-decoration:none; transition:border-color 0.2s;
-  ">🧊 3D 地图</a>
+  <div id="title-card"><h1 id="network-name">轨道交通</h1><span id="update-info"></span></div>
+  <a href="index.html" style="background:var(--panel-bg);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;text-decoration:none;">🧊 3D 地图</a>
 </div>
-
 <div id="legend"><h3>线路图例</h3><div id="legend-list"></div></div>
-<div id="hint"><span>🖱 拖拽平移</span> &nbsp;|&nbsp; <span>滚轮缩放</span></div>
+<div id="hint"><span>🖱 拖拽平移</span> &nbsp;|&nbsp; <span>滚轮缩放</span> &nbsp;|&nbsp; <span>中键复位</span></div>
 <div id="tooltip"></div>
 
 <script type="module">
-// ── 数据加载 ──────────────────────────────────
 const res = await fetch('railway_data.json');
 const data = await res.json();
 
-// ── 构建索引 ──────────────────────────────────
-const lineMap = {};
-for (const l of data.lines) lineMap[l.lineId] = l;
-
+const lineMap = {}; for (const l of data.lines) lineMap[l.lineId] = l;
 const lineLevels = {};
-for (const st of data.stations) {
-  for (const lv of st.levels) {
-    if (!lineLevels[lv.lineId]) lineLevels[lv.lineId] = [];
-    lineLevels[lv.lineId].push({ station:st, level:lv });
-  }
+for (const st of data.stations) for (const lv of st.levels) {
+  if (!lineLevels[lv.lineId]) lineLevels[lv.lineId] = [];
+  lineLevels[lv.lineId].push({ station:st, level:lv });
 }
 
-// ── Canvas 初始化 ─────────────────────────────
+// ── Canvas ────────────────────────────────────
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-
 function resize() {
   canvas.width = window.innerWidth * devicePixelRatio;
   canvas.height = window.innerHeight * devicePixelRatio;
@@ -113,239 +60,212 @@ function resize() {
   canvas.style.height = window.innerHeight + 'px';
   ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
 }
-resize();
-window.addEventListener('resize', resize);
+resize(); window.addEventListener('resize', resize);
 
-// ── 视图状态 ──────────────────────────────────
-let viewX = 0, viewY = 0, zoom = 1;
-let dragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
+// ── 视图 ──────────────────────────────────────
+let viewX=0, viewY=0, zoom=1;
+let dragging=false, dx0=0, dy0=0, vx0=0, vy0=0;
+const PAD = 80;
 
-// 计算数据边界
-const allX = data.stations.flatMap(s => s.levels.map(l => l.coordinate.x));
-const allZ = data.stations.flatMap(s => s.levels.map(l => l.coordinate.z));
-const dataMinX = Math.min(...allX), dataMaxX = Math.max(...allX);
-const dataMinZ = Math.min(...allZ), dataMaxZ = Math.max(...allZ);
-const dataW = dataMaxX - dataMinX || 100;
-const dataH = dataMaxZ - dataMinZ || 100;
-const pad = 60;
+const allX = data.stations.flatMap(s=>s.levels.map(l=>l.coordinate.x));
+const allZ = data.stations.flatMap(s=>s.levels.map(l=>l.coordinate.z));
+const mx = Math.min(...allX), Mx = Math.max(...allX);
+const mz = Math.min(...allZ), Mz = Math.max(...allZ);
+const dw = (Mx-mx)||100, dh = (Mz-mz)||100;
 
-// 初始居中
 function fitView() {
-  const sw = window.innerWidth, sh = window.innerHeight;
-  zoom = Math.min((sw - pad*2) / dataW, (sh - pad*2) / dataH);
-  viewX = sw/2 - (dataMinX + dataMaxX)/2 * zoom;
-  viewY = sh/2 - (dataMinZ + dataMaxZ)/2 * zoom;
+  const sw=window.innerWidth, sh=window.innerHeight;
+  // 用实际数据跨度计算，在数据边界加 PAD 世界单位
+  zoom = Math.min(sw/(dw+PAD*2), sh/(dh+PAD*2));
+  zoom = Math.max(0.02, Math.min(zoom, 15));
+  viewX = sw/2 - (mx+Mx)/2*zoom;
+  viewY = sh/2 - (mz+Mz)/2*zoom;
 }
 fitView();
 window.addEventListener('resize', fitView);
 
-// 坐标转换
-function worldToScreen(wx, wz) {
-  return { x: wx * zoom + viewX, y: wz * zoom + viewY };
-}
+function w2s(wx,wz) { return {x:wx*zoom+viewX, y:wz*zoom+viewY}; }
+function s2w(sx,sy) { return {x:(sx-viewX)/zoom, z:(sy-viewY)/zoom}; }
 
 // ── 交互 ──────────────────────────────────────
-canvas.addEventListener('mousedown', e => {
-  dragging = true;
-  dragStartX = e.clientX; dragStartY = e.clientY;
-  dragViewX = viewX; dragViewY = viewY;
+canvas.addEventListener('mousedown', e=>{
+  dragging=true; dx0=e.clientX; dy0=e.clientY; vx0=viewX; vy0=viewY;
 });
-canvas.addEventListener('mousemove', e => {
-  if (dragging) {
-    viewX = dragViewX + (e.clientX - dragStartX);
-    viewY = dragViewY + (e.clientY - dragStartY);
-    render();
-    return;
+canvas.addEventListener('mousemove', e=>{
+  if(dragging){ viewX=vx0+(e.clientX-dx0); viewY=vy0+(e.clientY-dy0); render(); return; }
+  const w=s2w(e.clientX, e.clientY);
+  let found=null;
+  for(const st of data.stations) for(const lv of st.levels){
+    const d=Math.hypot(w.x-lv.coordinate.x, w.z-lv.coordinate.z);
+    if(d<8/zoom){ found={st,lv,line:lineMap[lv.lineId]}; break; }
   }
-  // hover 检测
-  const mx = (e.clientX - viewX) / zoom;
-  const my = (e.clientY - viewY) / zoom;
-  let found = null;
-  for (const st of data.stations) {
-    for (const lv of st.levels) {
-      const dx = mx - lv.coordinate.x, dy = my - lv.coordinate.z;
-      if (dx*dx + dy*dy < 64) { found = { st, lv, line: lineMap[lv.lineId] }; break; }
-    }
-    if (found) break;
-  }
-  const tt = document.getElementById('tooltip');
-  if (found) {
-    const { st, lv, line } = found;
-    const date = st.openingDate ? `${st.openingDate.y}-${String(st.openingDate.m).padStart(2,'0')}-${String(st.openingDate.d).padStart(2,'0')}` : '未知';
-    const lvLabel = lv.level >= 0 ? `地上${lv.level}层` : `地下${Math.abs(lv.level)}层`;
-    const dirLabel = lv.direction==='e,w'?'东西向':lv.direction==='s,n'?'南北向':lv.direction;
-    const c = lv.coordinate;
-    const sameCount = st.levels.length;
-    tt.innerHTML = `
-      <div class="tt-name">${st.name} ${sameCount>1?'<span style="color:#ffaa00;font-size:11px;">('+sameCount+'层)</span>':''}</div>
+  const tt=document.getElementById('tooltip');
+  if(found){
+    const {st,lv,line}=found;
+    const dt=st.openingDate?`${st.openingDate.y}-${String(st.openingDate.m).padStart(2,'0')}-${String(st.openingDate.d).padStart(2,'0')}`:'未知';
+    const ll=lv.level>=0?`地上${lv.level}层`:`地下${Math.abs(lv.level)}层`;
+    const dl=lv.direction==='e,w'?'东西向':lv.direction==='s,n'?'南北向':lv.direction;
+    const sc=st.levels.length;
+    tt.innerHTML=`
+      <div class="tt-name">${st.name} ${sc>1?`<span style="color:#ffaa00;font-size:11px;">(${sc}层)</span>`:''}</div>
       <div class="tt-row">📍 ${st.district} &nbsp;|&nbsp; 🚉 ${st.platformCount} 站台</div>
-      <div class="tt-row">🏗 ${lvLabel} &nbsp;|&nbsp; 🛤 ${dirLabel} &nbsp;|&nbsp; ${lv.tracks} 轨</div>
-      <div class="tt-row">📅 开通: ${date}</div>
-      <div class="tt-row" style="color:#ffcc80;">📐 坐标: x${c.x} y${c.y} z${c.z}</div>
-      <div style="margin-top:6px;"><span class="tt-line" style="background:${line?.color||'#888'}">${line?.lineName||lv.lineId}</span></div>
-    `;
-    tt.classList.add('visible');
-    tt.style.left = e.clientX + 'px';
-    tt.style.top = e.clientY + 'px';
-  } else {
-    tt.classList.remove('visible');
-  }
+      <div class="tt-row">🏗 ${ll} &nbsp;|&nbsp; 🛤 ${dl} &nbsp;|&nbsp; ${lv.tracks} 轨</div>
+      <div class="tt-row">📅 开通: ${dt}</div>
+      <div class="tt-row" style="color:#ffcc80;">📐 x${lv.coordinate.x} y${lv.coordinate.y} z${lv.coordinate.z}</div>
+      <div style="margin-top:6px;"><span class="tt-line" style="background:${line?.color||'#888'}">${line?.lineName||lv.lineId}</span></div>`;
+    tt.classList.add('visible'); tt.style.left=e.clientX+'px'; tt.style.top=e.clientY+'px';
+  }else{ tt.classList.remove('visible'); }
 });
-canvas.addEventListener('mouseup', () => { dragging = false; });
-canvas.addEventListener('mouseleave', () => { dragging = false; });
-canvas.addEventListener('wheel', e => {
+canvas.addEventListener('mouseup', ()=>{ dragging=false; });
+canvas.addEventListener('mouseleave', ()=>{ dragging=false; });
+canvas.addEventListener('wheel', e=>{
   e.preventDefault();
-  const mx = e.clientX, my = e.clientY;
-  const wx = (mx - viewX) / zoom, wz = (my - viewY) / zoom;
-  zoom *= e.deltaY < 0 ? 1.1 : 0.9;
-  zoom = Math.max(0.05, Math.min(20, zoom));
-  viewX = mx - wx * zoom;
-  viewY = my - wz * zoom;
+  const w=s2w(e.clientX, e.clientY);
+  zoom*=e.deltaY<0?1.1:0.9; zoom=Math.max(0.02, Math.min(20, zoom));
+  viewX=e.clientX-w.x*zoom; viewY=e.clientY-w.z*zoom;
   render();
-}, { passive:false });
+},{passive:false});
+canvas.addEventListener('mousedown', e=>{
+  if(e.button===1){ e.preventDefault(); fitView(); render(); }
+});
 
 // ── 渲染 ──────────────────────────────────────
-
-function drawPolyline(pts) {
-  if (pts.length < 2) return;
+function drawLine(pts, color, width, dash, alpha){
+  if(pts.length<2) return;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=width; ctx.globalAlpha=alpha||1;
+  if(dash) ctx.setLineDash(dash);
   ctx.beginPath();
-  const s0 = worldToScreen(pts[0].x, pts[0].z);
-  ctx.moveTo(s0.x, s0.y);
-  for (let i = 1; i < pts.length; i++) {
-    const s = worldToScreen(pts[i].x, pts[i].z);
-    ctx.lineTo(s.x, s.y);
-  }
+  const s0=w2s(pts[0].x, pts[0].z); ctx.moveTo(s0.x, s0.y);
+  for(let i=1;i<pts.length;i++){ const s=w2s(pts[i].x, pts[i].z); ctx.lineTo(s.x,s.y); }
   ctx.stroke();
+  ctx.restore();
 }
 
-function render() {
-  const W = window.innerWidth, H = window.innerHeight;
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#1a1d23';
-  ctx.fillRect(0, 0, W, H);
+function drawStationBox(sx, sy, color){
+  const r=7;
+  ctx.save();
+  // 填充方框
+  ctx.fillStyle=color; ctx.globalAlpha=0.15;
+  ctx.fillRect(sx-r, sy-r, r*2, r*2);
+  // 边框
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.globalAlpha=0.9;
+  ctx.strokeRect(sx-r, sy-r, r*2, r*2);
+  // 四角小点
+  ctx.fillStyle=color; ctx.globalAlpha=1;
+  [{x:sx-r,y:sy-r},{x:sx+r,y:sy-r},{x:sx-r,y:sy+r},{x:sx+r,y:sy+r}].forEach(p=>{
+    ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
 
-  // 线路（单线）
-  for (const [lineId, items] of Object.entries(lineLevels)) {
-    const line = lineMap[lineId];
-    if (!line || items.length < 2) continue;
-    const sorted = [...items].sort((a,b) => a.level.coordinate.x - b.level.coordinate.x);
-    const pts = sorted.map(it => ({ x: it.level.coordinate.x, z: it.level.coordinate.z }));
-    const isPlanned = line.type === 'Planned';
-    if (isPlanned) {
-      ctx.strokeStyle = line.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.5;
-      ctx.setLineDash([6, 4]);
-      drawPolyline(pts);
-      ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
-    } else {
-      ctx.strokeStyle = line.color; ctx.lineWidth = 3.5; ctx.globalAlpha = 1;
-      drawPolyline(pts);
+function render(){
+  const W=window.innerWidth, H=window.innerHeight;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#14161b'; ctx.fillRect(0,0,W,H);
+
+  // ── 坐标网格 ──
+  const wTL=s2w(0,0), wBR=s2w(W,H);
+  // 计算合适的网格步长
+  const rawStep=50/zoom;
+  const mag=Math.pow(10, Math.floor(Math.log10(rawStep)));
+  let step=mag;
+  if(rawStep/mag<2) step=mag/2;
+  else if(rawStep/mag<5) step=mag*2;
+  else step=mag*5;
+  const gx0=Math.floor(wTL.x/step)*step, gx1=Math.ceil(wBR.x/step)*step;
+  const gz0=Math.floor(wTL.z/step)*step, gz1=Math.ceil(wBR.z/step)*step;
+  ctx.strokeStyle='#252830'; ctx.lineWidth=1;
+  for(let gx=gx0; gx<=gx1; gx+=step){
+    const s=w2s(gx,0); ctx.beginPath(); ctx.moveTo(s.x,0); ctx.lineTo(s.x,H); ctx.stroke();
+  }
+  for(let gz=gz0; gz<=gz1; gz+=step){
+    const s=w2s(0,gz); ctx.beginPath(); ctx.moveTo(0,s.y); ctx.lineTo(W,s.y); ctx.stroke();
+  }
+  // 网格标注
+  ctx.fillStyle='#555'; ctx.font='10px monospace'; ctx.textAlign='center';
+  for(let gx=gx0; gx<=gx1; gx+=step){
+    const s=w2s(gx, wTL.z); ctx.fillText(gx, s.x, Math.max(14, s.y-4));
+  }
+  ctx.textAlign='left';
+  for(let gz=gz0; gz<=gz1; gz+=step){
+    const s=w2s(wTL.x, gz); ctx.fillText(gz, Math.max(4, s.x+4), s.y-4);
+  }
+
+  // ── 线路 ──
+  for(const [lid, items] of Object.entries(lineLevels)){
+    const line=lineMap[lid]; if(!line||items.length<2) continue;
+    const sorted=[...items].sort((a,b)=>a.level.coordinate.x-b.level.coordinate.x);
+    const pts=sorted.map(it=>({x:it.level.coordinate.x, z:it.level.coordinate.z}));
+    if(line.type==='Planned'){
+      drawLine(pts, line.color, 2.5, [8,5], 0.5);
+    }else{
+      drawLine(pts, line.color, 4, null, 1);
+      // 细光晕
+      drawLine(pts, line.color, 8, null, 0.15);
     }
   }
 
-  // 同一站点不同层级虚线连接（橙色高亮）
-  ctx.setLineDash([4, 3]);
-  ctx.strokeStyle = '#ffaa00';
-  ctx.lineWidth = 1.8;
-  ctx.globalAlpha = 0.65;
-  for (const st of data.stations) {
-    if (st.levels.length < 2) continue;
-    const sorted = [...st.levels].sort((a,b) => a.level - b.level);
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const a = worldToScreen(sorted[i].coordinate.x, sorted[i].coordinate.z);
-      const b = worldToScreen(sorted[i+1].coordinate.x, sorted[i+1].coordinate.z);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  }
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-
-  // 站点
-  for (const st of data.stations) {
-    for (const lv of st.levels) {
-      const line = lineMap[lv.lineId];
-      const s = worldToScreen(lv.coordinate.x, lv.coordinate.z);
-
-      // 发光光晕
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, 10, 0, Math.PI*2);
-      ctx.fillStyle = line?.color || '#888';
-      ctx.globalAlpha = 0.25;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-
-      // 主体
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, 5.5, 0, Math.PI*2);
-      ctx.fillStyle = line?.color || '#888';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
+  // ── 同站多层连线 ──
+  for(const st of data.stations){
+    if(st.levels.length<2) continue;
+    const sorted=[...st.levels].sort((a,b)=>a.level-b.level);
+    for(let i=0;i<sorted.length-1;i++){
+      const a={x:sorted[i].coordinate.x, z:sorted[i].coordinate.z};
+      const b={x:sorted[i+1].coordinate.x, z:sorted[i+1].coordinate.z};
+      drawLine([a,b], '#ffaa00', 2, [5,3], 0.7);
     }
   }
 
-  // 站点标签（含层级数和坐标）
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 12px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 4;
-  const drawn = new Set();
-  for (const st of data.stations) {
-    const ax = st.levels.reduce((s,l)=>s+l.coordinate.x,0)/st.levels.length;
-    const az = st.levels.reduce((s,l)=>s+l.coordinate.z,0)/st.levels.length;
-    const key = `${ax.toFixed(1)},${az.toFixed(1)}`;
-    if (drawn.has(key)) continue; drawn.add(key);
-    const s = worldToScreen(ax, az);
-    const hasMulti = st.levels.length > 1;
-    ctx.fillText(st.name + (hasMulti ? ' ('+st.levels.length+'层)' : ''), s.x, s.y - 14);
-    // 坐标小字
-    ctx.font = '10px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillStyle = '#888';
-    const c0 = st.levels[0].coordinate;
-    ctx.fillText(`x${c0.x} y${c0.y} z${c0.z}`, s.x, s.y + 4);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px "PingFang SC","Microsoft YaHei",sans-serif';
+  // ── 站点 ──
+  for(const st of data.stations) for(const lv of st.levels){
+    const line=lineMap[lv.lineId]; const color=line?.color||'#888';
+    const s=w2s(lv.coordinate.x, lv.coordinate.z);
+    // 光晕
+    ctx.beginPath(); ctx.arc(s.x,s.y,10,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.globalAlpha=0.2; ctx.fill(); ctx.globalAlpha=1;
+    // 方框
+    drawStationBox(s.x, s.y, color);
+    // 中心点
+    ctx.beginPath(); ctx.arc(s.x,s.y,3.5,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.stroke();
   }
-  ctx.shadowBlur = 0;
-}
 
-function drawPolyline(pts) {
-  if (pts.length < 2) return;
-  ctx.beginPath();
-  const s0 = worldToScreen(pts[0].x, pts[0].z);
-  ctx.moveTo(s0.x, s0.y);
-  for (let i = 1; i < pts.length; i++) {
-    const s = worldToScreen(pts[i].x, pts[i].z);
-    ctx.lineTo(s.x, s.y);
+  // ── 标签 ──
+  ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=5;
+  const drawn=new Set();
+  for(const st of data.stations){
+    const ax=st.levels.reduce((s,l)=>s+l.coordinate.x,0)/st.levels.length;
+    const az=st.levels.reduce((s,l)=>s+l.coordinate.z,0)/st.levels.length;
+    const key=`${ax.toFixed(0)},${az.toFixed(0)}`; if(drawn.has(key)) continue; drawn.add(key);
+    const s=w2s(ax, az); const multi=st.levels.length>1;
+    ctx.textAlign='center';
+    // 站名
+    ctx.font='bold 13px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillStyle='#fff';
+    ctx.fillText(st.name+(multi?` (${st.levels.length}层)`:''), s.x, s.y-18);
+    // 首层坐标
+    ctx.font='10px monospace'; ctx.fillStyle='#999';
+    const c0=st.levels[0].coordinate;
+    ctx.fillText(`x${c0.x} y${c0.y} z${c0.z}`, s.x, s.y+24);
   }
-  ctx.stroke();
+  ctx.shadowBlur=0;
 }
 
-// ── 填充 UI ──────────────────────────────────
-const sysInfo = data.systemInfo || {};
-document.getElementById('network-name').textContent = sysInfo.network || '轨道交通';
-const lu = data.lastUpdated;
-document.getElementById('update-info').textContent = lu ? `${lu.y}-${String(lu.m).padStart(2,'0')}-${String(lu.d).padStart(2,'0')}` : '';
-
-const legendList = document.getElementById('legend-list');
-for (const line of data.lines) {
-  const item = document.createElement('div');
-  item.className = 'legend-item';
-  item.innerHTML = `
-    <span class="legend-dot" style="background:${line.color};box-shadow:0 0 6px ${line.color}"></span>
-    <span>${line.lineName}</span>
-    <span class="legend-badge">${line.type||''}</span>
-  `;
-  legendList.appendChild(item);
+// ── UI ────────────────────────────────────────
+const si=data.systemInfo||{};
+document.getElementById('network-name').textContent=si.network||'轨道交通';
+const lu=data.lastUpdated;
+document.getElementById('update-info').textContent=lu?`更新: ${lu.y}-${String(lu.m).padStart(2,'0')}-${String(lu.d).padStart(2,'0')}`:'';
+const ll=document.getElementById('legend-list');
+for(const l of data.lines){
+  const d=document.createElement('div'); d.className='legend-item';
+  d.innerHTML=`<span class="legend-dot" style="background:${l.color};box-shadow:0 0 6px ${l.color}"></span><span>${l.lineName}</span><span class="legend-badge">${l.type||''}</span>`;
+  ll.appendChild(d);
 }
-
 render();
-console.log('✅ 2D 轨道交通地图已就绪');
+console.log('✅ 2D 地图就绪');
 </script>
 </body>
 </html>

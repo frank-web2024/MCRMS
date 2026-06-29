@@ -207,22 +207,6 @@ ground.position.y = GROUND_Y - 0.5;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// 坐标轴小指示器
-const axisLen = 80;
-const axisHelper = (dir, color, origin) => {
-  const mat = new THREE.MeshBasicMaterial({ color });
-  const geo = new THREE.CylinderGeometry(1, 1, axisLen, 8);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.copy(origin).addScaledVector(dir, axisLen / 2);
-  if (dir.y === 1) mesh.position.y += axisLen/2;
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-  scene.add(mesh);
-};
-const axisOrigin = new THREE.Vector3(-250, GROUND_Y, 520);
-// 暂时隐藏坐标轴，保持画面简洁；如需开启取消注释
-// axisHelper(new THREE.Vector3(1,0,0), '#ff4444', axisOrigin); // X 红
-// axisHelper(new THREE.Vector3(0,1,0), '#44ff44', axisOrigin); // Y 绿
-// axisHelper(new THREE.Vector3(0,0,1), '#4444ff', axisOrigin); // Z 蓝
 
 // ── 构建线路索引 ──────────────────────────────
 const lineMap = {};
@@ -334,8 +318,47 @@ for (const st of data.stations) {
     sphere.userData = { station: st, levelObj: lv, line, isStation: true };
     stationGroup.add(sphere);
     stationMeshes.push({ mesh: sphere, station: st, levelObj: lv, line });
+
+    // 线框方框
+    const boxSize = STATION_RADIUS * 2.2;
+    const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(boxSize, boxSize, boxSize));
+    const edgeMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 });
+    const wireBox = new THREE.LineSegments(edgeGeo, edgeMat);
+    wireBox.position.copy(pos);
+    wireBox.userData = { isDecoration: true };
+    stationGroup.add(wireBox);
   }
 }
+
+// ── 坐标轴标注 ───────────────────────────────
+const axisGroup = new THREE.Group();
+scene.add(axisGroup);
+const axisOrigin = new THREE.Vector3(-250, GROUND_Y, 520);
+const axisLen = 120;
+
+// X 轴（红）
+const xLineGeo = new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(axisLen, 0, 0))]);
+axisGroup.add(new THREE.Line(xLineGeo, new THREE.LineBasicMaterial({ color: '#ff4444', linewidth: 2 })));
+// Z 轴（蓝）
+const zLineGeo = new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(0, 0, axisLen))]);
+axisGroup.add(new THREE.Line(zLineGeo, new THREE.LineBasicMaterial({ color: '#4488ff', linewidth: 2 })));
+// Y 轴（绿）
+const yLineGeo = new THREE.BufferGeometry().setFromPoints([axisOrigin, axisOrigin.clone().add(new THREE.Vector3(0, axisLen, 0))]);
+axisGroup.add(new THREE.Line(yLineGeo, new THREE.LineBasicMaterial({ color: '#44ff44', linewidth: 2 })));
+
+// 轴标签
+function addAxisLabel(text, pos, color) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  div.style.cssText = `color:${color};font-size:11px;font-weight:700;text-shadow:0 0 4px rgba(0,0,0,0.9);pointer-events:none;`;
+  const lbl = new CSS2DObject(div);
+  lbl.position.copy(pos);
+  lbl.userData = { isLabel: true };
+  labelGroup.add(lbl);
+}
+addAxisLabel('X', axisOrigin.clone().add(new THREE.Vector3(axisLen + 12, 0, 0)), '#ff4444');
+addAxisLabel('Y', axisOrigin.clone().add(new THREE.Vector3(0, axisLen + 12, 0)), '#44ff44');
+addAxisLabel('Z', axisOrigin.clone().add(new THREE.Vector3(0, 0, axisLen + 12)), '#4488ff');
 
 // ── CSS 标签 ──────────────────────────────────
 const labelGroup = new THREE.Group();
