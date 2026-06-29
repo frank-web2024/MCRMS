@@ -264,8 +264,21 @@ for (const [lineId, items] of Object.entries(lineLevels)) {
   if (items.length < 2) continue;
 
   const sorted = [...items].sort((a, b) => a.level.coordinate.x - b.level.coordinate.x);
-  const points = sorted.map(it => toVec3(it.level.coordinate));
-  const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+  // 方向变化处插入拐弯点
+  const curvePoints = [];
+  for (let i = 0; i < sorted.length; i++) {
+    curvePoints.push(toVec3(sorted[i].level.coordinate));
+    if (i < sorted.length - 1) {
+      const d1 = sorted[i].level.direction;
+      const d2 = sorted[i + 1].level.direction;
+      // 方向不同 → 插入中点作为拐弯
+      if (d1 !== d2) {
+        const mid = toVec3(sorted[i].level.coordinate).add(toVec3(sorted[i + 1].level.coordinate)).multiplyScalar(0.5);
+        curvePoints.push(mid);
+      }
+    }
+  }
+  const curve = new THREE.CatmullRomCurve3(curvePoints, false, 'catmullrom', 0.5);
 
   if (isPlanned) {
     const tubeGeo = new THREE.TubeGeometry(curve, TUBE_SEGMENTS, TUBE_RADIUS * 0.5, TUBE_RADIAL, false);
@@ -274,7 +287,7 @@ for (const [lineId, items] of Object.entries(lineLevels)) {
     tube.castShadow = true; tube.receiveShadow = true;
     lineGroup.add(tube);
     // 虚线叠加
-    const dashPts = curve.getPoints(points.length * 20);
+    const dashPts = curve.getPoints(curvePoints.length * 20);
     const dashGeo = new THREE.BufferGeometry().setFromPoints(dashPts);
     const dashLine = new THREE.Line(dashGeo, new THREE.LineDashedMaterial({ color, linewidth: 2, dashSize: 10, gapSize: 6 }));
     dashLine.computeLineDistances();
