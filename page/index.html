@@ -310,17 +310,17 @@ for (const st of data.stations) {
   const bw = Math.max(maxX - minX + 20, 28), bh = Math.max(maxZ - minZ + 20, 28);
   const maxY = Math.max(...st.levels.map(l => l.coordinate.y));
   const topY = maxY + STATION_RADIUS * 2;
-  const boxH = topY; // 从 y=0 到顶部
+  const boxH = topY - GROUND_Y;
 
-  // —— 整个站点的3D长方体线框（从y=0到顶部，有封顶） ——
+  // —— 站点3D长方体线框（从地面到顶部） ——
   const boxGeo = new THREE.BoxGeometry(bw, boxH, bh);
   const edgeGeo = new THREE.EdgesGeometry(boxGeo);
   const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 });
   const wireBox = new THREE.LineSegments(edgeGeo, edgeMat);
-  wireBox.position.set(cx, boxH / 2, cz);
+  wireBox.position.set(cx, GROUND_Y + boxH / 2, cz);
   stationGroup.add(wireBox);
 
-  // 半透明填充面
+  // 半透明填充
   const fillMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false });
   const fillBox = new THREE.Mesh(boxGeo, fillMat);
   fillBox.position.copy(wireBox.position);
