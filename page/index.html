@@ -89,7 +89,7 @@
   #nav-panel button:hover { opacity: 0.85; }
   #nav-result { margin-top: 12px; font-size: 12px; line-height: 1.6; }
   #nav-panel h3 { display: flex; align-items: center; justify-content: space-between; }
-  #nav-toggle { cursor: pointer; color: #888; font-size: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  #nav-toggle { cursor: pointer; color: #888; font-size: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.2s ease, color 0.2s, border-color 0.2s; }
   #nav-toggle:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
   #nav-result .step { padding: 4px 8px; margin: 2px 0; border-radius: 4px; background: rgba(255,255,255,0.05); }
   #nav-result .dist { color: var(--text-dim); font-size: 11px; }
@@ -582,7 +582,9 @@ console.log(`✅ 轨道交通地图已就绪 — ${data.stations.length} 个站�
 document.getElementById('nav-toggle').onclick = function(){
   var p = document.getElementById('nav-panel');
   p.classList.toggle('collapsed');
-  this.textContent = p.classList.contains('collapsed') ? '+' : '×';
+  this.style.transform = 'scale(0.8)';
+  setTimeout(() => { this.style.transform = 'scale(1)'; }, 100);
+  setTimeout(() => { this.textContent = p.classList.contains('collapsed') ? '+' : '×'; }, 100);
 };
 const navResult = document.getElementById('nav-result');
 const navFrom = document.getElementById('nav-from');
