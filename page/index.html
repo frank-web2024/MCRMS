@@ -309,18 +309,19 @@ for (const st of data.stations) {
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
   const bw = Math.max(maxX - minX + 20, 28), bh = Math.max(maxZ - minZ + 20, 28);
   const maxY = Math.max(...st.levels.map(l => l.coordinate.y));
-  const topY = maxY + STATION_RADIUS * 2;
-  const boxH = topY - GROUND_Y;
+  const minY = Math.min(...st.levels.map(l => l.coordinate.y));
+  const padY = STATION_RADIUS * 2;
+  const boxH = maxY - minY + padY * 2;
+  const boxCY = (minY + maxY) / 2;
 
-  // —— 站点3D长方体线框（从地面到顶部） ——
+  // —— 站点3D长方体线框（包裹该站点所有层级） ——
   const boxGeo = new THREE.BoxGeometry(bw, boxH, bh);
   const edgeGeo = new THREE.EdgesGeometry(boxGeo);
   const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 });
   const wireBox = new THREE.LineSegments(edgeGeo, edgeMat);
-  wireBox.position.set(cx, GROUND_Y + boxH / 2, cz);
+  wireBox.position.set(cx, boxCY, cz);
   stationGroup.add(wireBox);
 
-  // 半透明填充
   const fillMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false });
   const fillBox = new THREE.Mesh(boxGeo, fillMat);
   fillBox.position.copy(wireBox.position);
