@@ -451,7 +451,7 @@ function dijkstra2(g, sks, endId, cross) {
       if (dist[nk] !== undefined && dist[nk] !== Infinity) continue;
       if (n2.station.stationId === nd.station.stationId) continue;
       const d = Math.round(Math.hypot(nd.levelObj.coordinate.x-n2.levelObj.coordinate.x, nd.levelObj.coordinate.z-n2.levelObj.coordinate.z));
-      if (d <= 1500 && dist[k]+d < (dist[nk]||Infinity)) { dist[nk]=dist[k]+d; prev[nk]=k; prevE[nk]={type:'walk',dist:d}; pq.push({k:nk,d:dist[nk]}); }
+      if (d <= 1500 && dist[k]+d < (dist[nk]||Infinity)) { dist[nk]=dist[k]+d; prev[nk]=k; prevE[nk]={type:'walk',dist:d,pathPts:[{x:nd.levelObj.coordinate.x,z:nd.levelObj.coordinate.z},{x:n2.levelObj.coordinate.x,z:n2.levelObj.coordinate.z}]}; pq.push({k:nk,d:dist[nk]}); }
     }
   }
   return null;
@@ -517,17 +517,52 @@ function drawNavHighlight() {
     }
     ctx.stroke(); ctx.restore();
     // 动画小球
-    let totalL = 0; const lens = [];
-    for (let i = 1; i < pts.length; i++) { lens.push(Math.hypot(pts[i].x-pts[i-1].x, pts[i].z-pts[i-1].z)); totalL += lens[lens.length-1]; }
+    const segs = []; // {type:'line'|'bezier', p0,p1,p2?, len}
+    let totalL = 0;
+    if (pts.length === 5) {
+      // 弯道：段0直线(pt0→pt1)，段1贝塞尔(pt1→pt3，控制点pt2)，段2直线(pt3→pt4)
+      const addSeg = (type, p0, p1, p2) => {
+        let len;
+        if (type === 'bezier') {
+          len = 0; let prev = p0;
+          for (let s = 1; s <= 20; s++) {
+            const t2 = s / 20, u = 1 - t2;
+            const cp = { x: u*u*p0.x + 2*u*t2*p2.x + t2*t2*p1.x, z: u*u*p0.z + 2*u*t2*p2.z + t2*t2*p1.z };
+            len += Math.hypot(cp.x - prev.x, cp.z - prev.z); prev = cp;
+          }
+        } else {
+          len = Math.hypot(p1.x - p0.x, p1.z - p0.z);
+        }
+        totalL += len; segs.push({ type, p0, p1, p2, len });
+      };
+      addSeg('line', pts[0], pts[1]);
+      addSeg('bezier', pts[1], pts[3], pts[2]);
+      addSeg('line', pts[3], pts[4]);
+    } else {
+      for (let i = 1; i < pts.length; i++) {
+        const len = Math.hypot(pts[i].x - pts[i-1].x, pts[i].z - pts[i-1].z);
+        totalL += len; segs.push({ type: 'line', p0: pts[i-1], p1: pts[i], len });
+      }
+    }
     const count = Math.max(3, Math.floor(totalL / 100));
     for (let a = 0; a < count; a++) {
       const prog = ((now * 0.15) % 1 + a/count) % 1;
-      let target = prog * totalL, acc = 0;
-      let pi = 0;
-      for (; pi < lens.length; pi++) { if (acc + lens[pi] > target) break; acc += lens[pi]; }
-      const t = pi < lens.length ? (target - acc) / lens[pi] : 1;
-      const p0 = pts[Math.min(pi, pts.length-1)], p1 = pts[Math.min(pi+1, pts.length-1)];
-      const bx = p0.x + (p1.x - p0.x) * t, bz = p0.z + (p1.z - p0.z) * t;
+      let target = prog * totalL, acc = 0, bx, bz;
+      for (const sg of segs) {
+        if (acc + sg.len > target) {
+          const t2 = (target - acc) / sg.len;
+          if (sg.type === 'bezier') {
+            const u = 1 - t2;
+            bx = u*u*sg.p0.x + 2*u*t2*sg.p2.x + t2*t2*sg.p1.x;
+            bz = u*u*sg.p0.z + 2*u*t2*sg.p2.z + t2*t2*sg.p1.z;
+          } else {
+            bx = sg.p0.x + (sg.p1.x - sg.p0.x) * t2;
+            bz = sg.p0.z + (sg.p1.z - sg.p0.z) * t2;
+          }
+          break;
+        }
+        acc += sg.len;
+      }
       const bs = w2s(bx, bz);
       ctx.beginPath(); ctx.arc(bs.x, bs.y, 3, 0, Math.PI*2);
       ctx.fillStyle = '#fff'; ctx.fill();
