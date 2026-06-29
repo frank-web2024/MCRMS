@@ -28,8 +28,7 @@
     border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
     padding: 12px 20px; color: var(--text);
   }
-  #title-card h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
-  #title-card span { font-size: 12px; color: var(--text-dim); display: block; min-height: 16px; }
+  #title-card h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; margin: 0 0 6px; }
 
   /* 图例 */
   #legend {
@@ -105,14 +104,8 @@
 <div id="top-bar">
   <div id="title-card">
     <h1 id="network-name">轨道交通</h1>
-    <span id="update-info"></span>
+    <a href="map2d.html" style="display:inline-block;background:var(--panel-bg);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:4px 14px;color:var(--text);font-size:12px;text-decoration:none;">📐 2D 地图</a>
   </div>
-  <a href="map2d.html" style="
-    background:var(--panel-bg); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,0.12); border-radius:10px;
-    padding:10px 16px; color:var(--text); font-size:13px;
-    text-decoration:none; transition:border-color 0.2s;
-  ">📐 2D 地图</a>
 </div>
 
 <div id="nav-panel">
@@ -557,9 +550,6 @@ animate();
 // ── 填充分页信息 ──────────────────────────────
 const sysInfo = data.systemInfo || {};
 document.getElementById('network-name').textContent = sysInfo.network || '轨道交通';
-const lu = data.lastUpdated;
-const luStr = lu ? `${lu.y}-${String(lu.m).padStart(2,'0')}-${String(lu.d).padStart(2,'0')}` : '';
-document.getElementById('update-info').textContent = luStr ? `数据更新: ${luStr}` : '';
 
 // ── 填充图例 ──────────────────────────────────
 const legendList = document.getElementById('legend-list');
