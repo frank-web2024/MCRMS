@@ -43,6 +43,23 @@
 const res = await fetch('railway_data.json');
 const data = await res.json();
 
+// 加载地板图片
+const bgImgs = [];
+const bgFiles = ['地图1.png','地图2.png','地图3.png','地图4.png'];
+await Promise.all(bgFiles.map((f, i) => new Promise(resolve => {
+  const img = new Image();
+  img.onload = () => { bgImgs[i] = img; resolve(); };
+  img.onerror = () => resolve();
+  img.src = f;
+})));
+// 图片位置：0:++ 1:-+ 2:+- 3:--（与3D一致）
+const bgSlots = [
+  { img:bgImgs[0], x0:0, x1:1, z0:0, z1:1 },   // 地图1 东南
+  { img:bgImgs[1], x0:-1, x1:0, z0:0, z1:1 },   // 地图2 西南
+  { img:bgImgs[2], x0:0, x1:1, z0:-1, z1:0 },   // 地图3 东北
+  { img:bgImgs[3], x0:-1, x1:0, z0:-1, z1:0 },  // 地图4 西北
+];
+
 const lineMap = {}; for (const l of data.lines) lineMap[l.lineId] = l;
 const lineLevels = {};
 for (const st of data.stations) for (const lv of st.levels) {
@@ -146,6 +163,26 @@ function render(){
   const W=window.innerWidth, H=window.innerHeight;
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle='#14161b'; ctx.fillRect(0,0,W,H);
+
+  // ── 地板背景图 ──
+  if(bgImgs.every(i=>i)){
+    const bx0=Math.min(...allX), bx1=Math.max(...allX);
+    const bz0=Math.min(...allZ), bz1=Math.max(...allZ);
+    const bpadX=60, bpadZ=15;
+    const rx0=bx0-bpadX, rx1=bx1+bpadX, rz0=bz0-bpadZ, rz1=bz1+bpadZ;
+    const bw=rx1-rx0, bh=rz1-rz0;
+    // 2x2 格子
+    const slots2d=[
+      {i:0, x:rx0+bw/4*3, z:rz0+bh/4*3, w:bw/2, h:bh/2}, // 地图1 ++
+      {i:1, x:rx0+bw/4,   z:rz0+bh/4*3, w:bw/2, h:bh/2}, // 地图2 -+
+      {i:2, x:rx0+bw/4*3, z:rz0+bh/4,   w:bw/2, h:bh/2}, // 地图3 +-
+      {i:3, x:rx0+bw/4,   z:rz0+bh/4,   w:bw/2, h:bh/2}, // 地图4 --
+    ];
+    slots2d.forEach(s=>{
+      const tl=w2s(s.x-s.w/2, s.z+s.h/2), br=w2s(s.x+s.w/2, s.z-s.h/2);
+      ctx.drawImage(bgImgs[s.i], tl.x, tl.y, br.x-tl.x, br.y-tl.y);
+    });
+  }
 
   // ── 坐标网格 ──
   const wTL=s2w(0,0), wBR=s2w(W,H);
