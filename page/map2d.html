@@ -484,7 +484,7 @@ document.getElementById('nav-go').addEventListener('click', () => {
     const na = g.nodes[seg.from], nb = g.nodes[seg.to];
     if (!na || !nb) continue;
     const sd = Math.round(Math.hypot(na.levelObj.coordinate.x-nb.levelObj.coordinate.x, na.levelObj.coordinate.z-nb.levelObj.coordinate.z));
-    if (seg.type === 'transfer') h += `<div class="step" style="background:rgba(255,170,0,0.15);">🔄 换乘: ${na.station.name} ${na.line?.lineName||'?'}→${nb.line?.lineName||'?'}</div>`;
+    if (seg.type === 'transfer') h += `<div class="step" style="background:rgba(255,170,0,0.15);">🔄 换乘: ${na.station.name} ${na.line?.lineName||'?'}(${na.levelObj.level>=0?'地上'+na.levelObj.level:'地下'+Math.abs(na.levelObj.level)}层) → ${nb.line?.lineName||'?'}(${nb.levelObj.level>=0?'地上'+nb.levelObj.level:'地下'+Math.abs(nb.levelObj.level)}层)</div>`;
     else if (seg.type === 'walk') h += `<div class="step" style="background:rgba(255,112,67,0.15);">🚶 步行: ${na.station.name}→${nb.station.name} (${sd}格)</div>`;
     else { tr += sd; const dir = na.levelObj.coordinate.x < nb.levelObj.coordinate.x?'东':na.levelObj.coordinate.x > nb.levelObj.coordinate.x?'西':na.levelObj.coordinate.z < nb.levelObj.coordinate.z?'南':'北'; const lvl = na.levelObj.level>=0?'地上'+na.levelObj.level:'地下'+Math.abs(na.levelObj.level); h += `<div class="step">${n++}. 🚆 ${na.line?.lineName||seg.lineId} (${lvl}层): ${na.station.name} → ${nb.station.name} <span style="color:#4fc3f7;">${sd}格</span> 往${dir}${detail?` <span style="color:#888;font-size:10px;">| 坐标(${na.levelObj.coordinate.x},${na.levelObj.coordinate.z})→(${nb.levelObj.coordinate.x},${nb.levelObj.coordinate.z})</span>`:''}</div>`; }
   }
