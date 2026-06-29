@@ -71,6 +71,24 @@
   #tooltip .tt-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
   #tooltip .tt-line { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; color: #fff; }
   #tooltip .tt-row { color: #bbb; font-size: 12px; }
+
+  /* 导航面板 */
+  #nav-panel {
+    position: fixed; top: 80px; right: 16px; z-index: 10;
+    background: var(--panel-bg); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+    padding: 14px 16px; color: var(--text); width: 280px;
+    font-size: 13px; max-height: calc(100vh - 160px); overflow-y: auto;
+  }
+  #nav-panel h3 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
+  #nav-panel input { width: 100%; padding: 6px 10px; margin: 4px 0 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: var(--text); font-size: 13px; outline: none; }
+  #nav-panel input:focus { border-color: var(--accent); }
+  #nav-panel label { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; margin: 4px 0; cursor: pointer; }
+  #nav-panel button { width: 100%; padding: 8px; margin-top: 8px; border-radius: 8px; border: none; background: var(--accent); color: #1a1d23; font-weight: 600; cursor: pointer; font-size: 13px; }
+  #nav-panel button:hover { opacity: 0.85; }
+  #nav-result { margin-top: 12px; font-size: 12px; line-height: 1.6; }
+  #nav-result .step { padding: 4px 8px; margin: 2px 0; border-radius: 4px; background: rgba(255,255,255,0.05); }
+  #nav-result .dist { color: var(--text-dim); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -88,6 +106,16 @@
     padding:10px 16px; color:var(--text); font-size:13px;
     text-decoration:none; transition:border-color 0.2s;
   ">📐 2D 地图</a>
+</div>
+
+<div id="nav-panel">
+  <h3>🧭 路线导航</h3>
+  <input id="nav-from" placeholder="出发站" list="station-list">
+  <input id="nav-to" placeholder="到达站" list="station-list">
+  <datalist id="station-list"></datalist>
+  <label><input type="checkbox" id="nav-cross"> 越野 (步行≤1500格)</label>
+  <button id="nav-go">查询路线</button>
+  <div id="nav-result"></div>
 </div>
 
 <div id="legend"><h3>线路图例</h3><div id="legend-list"></div></div>
@@ -527,6 +555,198 @@ for (const line of data.lines) {
 }
 
 console.log(`✅ 轨道交通地图已就绪 — ${data.stations.length} 个站点, ${data.lines.length} 条线路`);
+
+// ═══════════════════════════════════════════════
+// 导航系统
+// ═══════════════════════════════════════════════
+const navResult = document.getElementById('nav-result');
+const navFrom = document.getElementById('nav-from');
+const navTo = document.getElementById('nav-to');
+const navCross = document.getElementById('nav-cross');
+const navGo = document.getElementById('nav-go');
+const stationList = document.getElementById('station-list');
+const highlightGroup = new THREE.Group(); scene.add(highlightGroup);
+
+// 填充站点建议
+data.stations.forEach(st => {
+  const opt = document.createElement('option');
+  opt.value = st.name; stationList.appendChild(opt);
+});
+
+// 构建图：节点 = 每个level
+function buildGraph() {
+  const nodes = {}; // key → {station, levelObj, line}
+  const edges = []; // [{from, to, dist, type:'line'|'transfer'}]
+
+  // 所有level作为节点
+  for (const st of data.stations) for (const lv of st.levels) {
+    const key = `${st.stationId}|${lv.level}|${lv.lineId}`;
+    nodes[key] = { station: st, levelObj: lv, line: lineMap[lv.lineId] };
+  }
+
+  // 同线路相邻站点连线
+  for (const [lid, items] of Object.entries(lineLevels)) {
+    const sorted = [...items].sort((a,b) => a.level.coordinate.x - b.level.coordinate.x);
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const a = sorted[i], b = sorted[i+1];
+      const kA = `${a.station.stationId}|${a.level.level}|${lid}`;
+      const kB = `${b.station.stationId}|${b.level.level}|${lid}`;
+      const d = a.level.coordinate.x !== b.level.coordinate.x || a.level.coordinate.z !== b.level.coordinate.z
+        ? Math.sqrt((a.level.coordinate.x-b.level.coordinate.x)**2 + (a.level.coordinate.z-b.level.coordinate.z)**2)
+        : 10;
+      edges.push({ from: kA, to: kB, dist: Math.round(d), type: 'line', lineId: lid });
+    }
+  }
+
+  // 同站换乘
+  for (const st of data.stations) {
+    for (let i = 0; i < st.levels.length; i++) {
+      for (let j = i + 1; j < st.levels.length; j++) {
+        const a = st.levels[i], b = st.levels[j];
+        edges.push({
+          from: `${st.stationId}|${a.level}|${a.lineId}`,
+          to: `${st.stationId}|${b.level}|${b.lineId}`,
+          dist: 30, type: 'transfer'
+        });
+      }
+    }
+  }
+
+  return { nodes, edges };
+}
+
+// Dijkstra
+function dijkstra(graph, startKeys, endStationId, allowCross) {
+  const { nodes, edges } = graph;
+  const dist = {}, prev = {}, visited = new Set();
+  const pq = []; // [{key, dist}]
+
+  for (const k of Object.keys(nodes)) dist[k] = Infinity;
+  for (const sk of startKeys) {
+    if (!nodes[sk]) continue;
+    dist[sk] = 0; pq.push({ key: sk, dist: 0 });
+  }
+
+  while (pq.length) {
+    pq.sort((a,b) => a.dist - b.dist);
+    const { key } = pq.shift();
+    if (visited.has(key)) continue;
+    visited.add(key);
+    const node = nodes[key];
+    if (!node) continue;
+    if (node.station.stationId === endStationId) {
+      // 回溯路径
+      const path = []; let cur = key;
+      while (cur) { path.unshift(cur); cur = prev[cur]; }
+      return { path, dist: dist[key] };
+    }
+
+    for (const e of edges) {
+      let nd;
+      if (e.from === key) nd = e.to;
+      else if (e.to === key) nd = e.from;
+      else continue;
+      if (visited.has(nd)) continue;
+      if (!nodes[nd]) continue;
+      const nd2 = dist[key] + e.dist;
+      if (nd2 < dist[nd]) {
+        dist[nd] = nd2;
+        prev[nd] = key;
+        pq.push({ key: nd, dist: nd2 });
+      }
+    }
+
+    // 越野
+    if (allowCross && node) {
+      for (const [nk, n2] of Object.entries(nodes)) {
+        if (visited.has(nk) || n2.station.stationId === node.station.stationId) continue;
+        const d = Math.sqrt(
+          (node.levelObj.coordinate.x - n2.levelObj.coordinate.x)**2 +
+          (node.levelObj.coordinate.z - n2.levelObj.coordinate.z)**2
+        );
+        if (d <= 1500) {
+          const nd2 = dist[key] + Math.round(d);
+          if (nd2 < dist[nk]) {
+            dist[nk] = nd2;
+            prev[nk] = key;
+            pq.push({ key: nk, dist: nd2 });
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// 高亮路径
+function highlightPath(pathKeys, graph) {
+  highlightGroup.clear();
+  if (!pathKeys) return;
+  const pts = [];
+  for (const k of pathKeys) {
+    const n = graph.nodes[k];
+    if (n) pts.push(toVec3(n.levelObj.coordinate));
+  }
+  if (pts.length < 2) return;
+  // 高亮管道
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0);
+  const hGeo = new THREE.TubeGeometry(curve, 80, 3, 8, false);
+  const hMat = new THREE.MeshBasicMaterial({ color: '#ffeb3b', transparent: true, opacity: 0.7, depthTest: true });
+  const hTube = new THREE.Mesh(hGeo, hMat);
+  highlightGroup.add(hTube);
+  // 光晕
+  const gGeo = new THREE.TubeGeometry(curve, 80, 5, 8, false);
+  const gMat = new THREE.MeshBasicMaterial({ color: '#ffeb3b', transparent: true, opacity: 0.2, depthWrite: false });
+  highlightGroup.add(new THREE.Mesh(gGeo, gMat));
+}
+
+// 查询
+navGo.addEventListener('click', () => {
+  const fromName = navFrom.value.trim();
+  const toName = navTo.value.trim();
+  if (!fromName || !toName) { navResult.innerHTML = '<span style="color:#f88;">请输入出发站和到达站</span>'; return; }
+
+  const fromSt = data.stations.find(s => s.name === fromName);
+  const toSt = data.stations.find(s => s.name === toName);
+  if (!fromSt) { navResult.innerHTML = `<span style="color:#f88;">未找到站: ${fromName}</span>`; return; }
+  if (!toSt) { navResult.innerHTML = `<span style="color:#f88;">未找到站: ${toName}</span>`; return; }
+  if (fromSt === toSt) { navResult.innerHTML = '<span style="color:#f88;">出发站和到达站相同</span>'; return; }
+
+  const graph = buildGraph();
+  const startKeys = fromSt.levels.map(lv => `${fromSt.stationId}|${lv.level}|${lv.lineId}`);
+  const result = dijkstra(graph, startKeys, toSt.stationId, navCross.checked);
+
+  if (!result) {
+    navResult.innerHTML = '<span style="color:#f88;">未找到可行路线</span>';
+    highlightPath(null, graph);
+    return;
+  }
+
+  // 格式化输出
+  let html = `<div style="color:#4fc3f7;font-weight:600;">✅ 总距离: ${result.dist} 格</div>`;
+  let prevNode = null;
+  let segDist = 0;
+  for (const k of result.path) {
+    const n = graph.nodes[k];
+    if (!n) continue;
+    const lineName = n.line ? n.line.lineName : '';
+    if (prevNode) {
+      const d = Math.round(Math.sqrt(
+        (n.levelObj.coordinate.x - prevNode.levelObj.coordinate.x)**2 +
+        (n.levelObj.coordinate.z - prevNode.levelObj.coordinate.z)**2
+      ));
+      segDist += d;
+    }
+    if (prevNode && prevNode.station.stationId !== n.station.stationId) {
+      html += `<div class="step">🚉 <b>${prevNode.station.name}</b> → <b>${n.station.name}</b> <span class="dist">${segDist}格</span> ${prevNode.line !== n.line ? '<span style="color:#ffaa00;">[换乘]</span>' : ''}</div>`;
+    }
+    prevNode = n;
+  }
+  html += `<div class="step" style="color:#4fc3f7;">🏁 到达 <b>${toSt.name}</b></div>`;
+  navResult.innerHTML = html;
+
+  highlightPath(result.path, graph);
+});
 </script>
 </body>
 </html>
