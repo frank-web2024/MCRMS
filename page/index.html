@@ -319,14 +319,34 @@ for (const st of data.stations) {
     stationGroup.add(sphere);
     stationMeshes.push({ mesh: sphere, station: st, levelObj: lv, line });
 
-    // 线框方框
-    const boxSize = STATION_RADIUS * 2.2;
-    const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(boxSize, boxSize, boxSize));
-    const edgeMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 });
-    const wireBox = new THREE.LineSegments(edgeGeo, edgeMat);
-    wireBox.position.copy(pos);
-    wireBox.userData = { isDecoration: true };
-    stationGroup.add(wireBox);
+    // 站点大框（地面投影框 + 半透明填充）
+    const boxSize = 28;
+    // 地面平面方框
+    const planeGeo = new THREE.PlaneGeometry(boxSize, boxSize);
+    const planeMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false });
+    const plane = new THREE.Mesh(planeGeo, planeMat);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set(pos.x, GROUND_Y + 0.2, pos.z);
+    plane.userData = { isDecoration: true };
+    stationGroup.add(plane);
+    // 边框线
+    const edgeGeo2 = new THREE.EdgesGeometry(new THREE.BoxGeometry(boxSize, 0.1, boxSize));
+    const edgeMat2 = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.7 });
+    const borderLine = new THREE.LineSegments(edgeGeo2, edgeMat2);
+    borderLine.position.set(pos.x, GROUND_Y + 0.3, pos.z);
+    borderLine.userData = { isDecoration: true };
+    stationGroup.add(borderLine);
+    // 四角立柱
+    const pillarH = pos.y - GROUND_Y + STATION_RADIUS;
+    const pillarGeo = new THREE.CylinderGeometry(0.6, 0.6, pillarH, 6);
+    const pillarMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.5 });
+    for (const [dx, dz] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+      pillar.position.set(pos.x + dx * boxSize/2, GROUND_Y + pillarH/2, pos.z + dz * boxSize/2);
+      pillar.castShadow = true;
+      pillar.userData = { isDecoration: true };
+      stationGroup.add(pillar);
+    }
   }
 }
 
