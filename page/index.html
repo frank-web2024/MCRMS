@@ -74,7 +74,7 @@
 
   /* 导航面板 */
   #nav-panel {
-    position: fixed; top: 70px; right: 16px; z-index: 10;
+    position: fixed; top: 16px; right: 16px; z-index: 10;
     background: var(--panel-bg); backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
     padding: 14px 16px; color: var(--text); width: 280px;
@@ -83,7 +83,7 @@
   #nav-panel h3 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
   #nav-panel input { width: 100%; padding: 6px 10px; margin: 4px 0 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: var(--text); font-size: 13px; outline: none; }
   #nav-panel input:focus { border-color: var(--accent); }
-  #nav-panel label { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; margin: 4px 0; cursor: pointer; }
+  #nav-panel label { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; margin: 3px 0; cursor: pointer; white-space: nowrap; }
   #nav-panel button { width: 100%; padding: 8px; margin-top: 8px; border-radius: 8px; border: none; background: var(--accent); color: #1a1d23; font-weight: 600; cursor: pointer; font-size: 13px; }
   #nav-panel button:hover { opacity: 0.85; }
   #nav-result { margin-top: 12px; font-size: 12px; line-height: 1.6; }
@@ -114,6 +114,7 @@
   <input id="nav-to" placeholder="到达站" list="station-list">
   <datalist id="station-list"></datalist>
   <label><input type="checkbox" id="nav-cross"> 越野 (步行≤1500格)</label>
+  <label><input type="checkbox" id="nav-detail"> 详细模式</label>
   <button id="nav-go">查询路线</button>
   <div id="nav-result"></div>
 </div>
@@ -529,6 +530,13 @@ function animate() {
     child.lookAt(camera.position);
   }
 
+  // 导航小球动画
+  const t = performance.now() / 1000;
+  for (const b of navBalls) {
+    const prog = ((t * 0.15) % 1 + b.offset) % 1;
+    b.mesh.position.copy(b.curve.getPointAt(prog));
+  }
+
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 }
@@ -670,42 +678,39 @@ function dijkstra(graph, startKeys, endStationId, allowCross) {
   return null;
 }
 
+const navDetail = document.getElementById('nav-detail');
+let navBalls = []; // {mesh, curve, offset} 用于动画
+
 function highlightPath(result, graph) {
   highlightGroup.clear();
+  navBalls = [];
   if (!result) return;
+  const sphereGeo = new THREE.SphereGeometry(5, 12, 12);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const seg of result.segments) {
     const na = graph.nodes[seg.from], nb = graph.nodes[seg.to];
     if (!na || !nb) continue;
     const pts = seg.pathPts && seg.pathPts.length >= 2 ? seg.pathPts : [toVec3(na.levelObj.coordinate), toVec3(nb.levelObj.coordinate)];
-
-    // 用和原始线路相同的 CurvePath 方式构建曲线
     const curve = new THREE.CurvePath();
     for (let p = 1; p < pts.length; p++) {
       if (p === 2 && pts.length === 5) {
-        // 贝塞尔弧线段 (c1→corner→c2)
         curve.add(new THREE.QuadraticBezierCurve3(pts[1].clone(), pts[2].clone(), pts[3].clone()));
         p = 3; continue;
       }
       curve.add(new THREE.LineCurve3(pts[p-1].clone(), pts[p].clone()));
     }
-
     const color = seg.type === 'transfer' ? '#ffaa00' : seg.type === 'walk' ? '#ff7043' : '#ffeb3b';
     const hGeo = new THREE.TubeGeometry(curve, 64, 4, 8, false);
-    const hMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthTest: true });
-    highlightGroup.add(new THREE.Mesh(hGeo, hMat));
+    highlightGroup.add(new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthTest: true })));
 
-    // 沿曲线分布小球指示方向
+    // 动画小球
     const totalLen = curve.getLength();
-    const interval = 120;
-    const count = Math.max(3, Math.floor(totalLen / interval));
-    const sphereGeo = new THREE.SphereGeometry(5, 12, 12);
-    const sphereMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const count = Math.max(4, Math.floor(totalLen / 100));
     for (let a = 0; a < count; a++) {
-      const t = (a + 0.5) / count;
-      const pt = curve.getPointAt(t);
-      const ball = new THREE.Mesh(sphereGeo, sphereMat);
-      ball.position.copy(pt);
+      const ball = new THREE.Mesh(sphereGeo, sphereMat.clone());
+      ball.position.copy(curve.getPointAt(0));
       highlightGroup.add(ball);
+      navBalls.push({ mesh: ball, curve, offset: a / count });
     }
   }
 }
@@ -725,7 +730,8 @@ navGo.addEventListener('click', () => {
   if (!result) { navResult.innerHTML = '<span style="color:#f88;">未找到可行路线</span>'; highlightPath(null, g); return; }
 
   let html = `<div style="font-weight:600;margin-bottom:8px;">🚩 ${fs.name} → ${ts.name} <span style="color:#4fc3f7;">${result.dist}格</span></div>`;
-  let stepNum = 1;
+  const detail = navDetail.checked;
+  let stepNum = 1, totalRide = 0;
   for (let i = 0; i < result.segments.length; i++) {
     const seg = result.segments[i];
     const na = g.nodes[seg.from], nb = g.nodes[seg.to];
@@ -737,9 +743,17 @@ navGo.addEventListener('click', () => {
     } else if (seg.type === 'walk') {
       html += `<div class="step" style="background:rgba(255,112,67,0.15);">🚶 <b>步行</b>: ${na.station.name} → ${nb.station.name} (${sd}格)</div>`;
     } else {
+      totalRide += sd;
       const dirStr = pa.x < pb.x ? '东' : pa.x > pb.x ? '西' : pa.z < pb.z ? '南' : '北';
-      html += `<div class="step">${stepNum++}. 🚆 乘坐 <b>${na.line?.lineName||seg.lineId}</b> (${na.levelObj.level>=0?'地上'+na.levelObj.level:'地下'+Math.abs(na.levelObj.level)}层): <b>${na.station.name}</b> → <b>${nb.station.name}</b> <span style="color:#4fc3f7;">${sd}格</span> 往${dirStr}</div>`;
+      html += `<div class="step">${stepNum++}. 🚆 乘坐 <b>${na.line?.lineName||seg.lineId}</b> (${na.levelObj.level>=0?'地上'+na.levelObj.level:'地下'+Math.abs(na.levelObj.level)}层): <b>${na.station.name}</b> → <b>${nb.station.name}</b> <span style="color:#4fc3f7;">${sd}格</span> 往${dirStr}`;
+      if (detail) {
+        html += ` <span style="color:#888;font-size:11px;">| 区间${sd}格 | 线路${na.line?.lineName||'?'}</span>`;
+      }
+      html += `</div>`;
     }
+  }
+  if (detail) {
+    html += `<div class="step" style="color:#888;font-size:11px;">📊 乘坐总距离: ${totalRide}格 | 换乘次数: ${result.segments.filter(s=>s.type==='transfer').length} | 步行段: ${result.segments.filter(s=>s.type==='walk').length}</div>`;
   }
   html += `<div class="step" style="color:#4fc3f7;">🏁 到达 <b>${ts.name}</b></div>`;
   navResult.innerHTML = html;
