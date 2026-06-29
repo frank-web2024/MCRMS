@@ -572,35 +572,51 @@ data.stations.forEach(st => {
   opt.value = st.name; stationList.appendChild(opt);
 });
 
+// 计算两站点间的实际路径点（含拐弯弧线）
+function getPathPoints(pa, pb, dirA, dirB) {
+  const bendR = 50;
+  if (dirA === dirB) return [toVec3(pa), toVec3(pb)];
+  const ca = toVec3(pa), cb = toVec3(pb);
+  const corner = ca.clone();
+  if (dirA === 'e,w' && dirB === 's,n') corner.x = pb.x;
+  else if (dirA === 's,n' && dirB === 'e,w') corner.z = pb.z;
+  const d1 = corner.clone().sub(ca); d1.setLength(Math.min(bendR, d1.length()*0.45));
+  const d2 = corner.clone().sub(cb); d2.setLength(Math.min(bendR, d2.length()*0.45));
+  const c1 = corner.clone().sub(d1), c2 = corner.clone().sub(d2);
+  return [ca, c1, corner, c2, cb];
+}
+
 function buildGraph() {
   const nodes = {};
-  const adj = {}; // key → [{key, dist, type, lineId, edgeObj}]
+  const adj = {};
   for (const st of data.stations) for (const lv of st.levels) {
     const key = `${st.stationId}|${lv.level}|${lv.lineId}`;
     nodes[key] = { station: st, levelObj: lv, line: lineMap[lv.lineId] };
     adj[key] = [];
   }
-  // 同线路相邻站点
   for (const [lid, items] of Object.entries(lineLevels)) {
     const sorted = [...items].sort((a,b) => a.level.coordinate.x - b.level.coordinate.x);
     for (let i = 0; i < sorted.length - 1; i++) {
       const a = sorted[i], b = sorted[i+1];
       const kA = `${a.station.stationId}|${a.level.level}|${lid}`;
       const kB = `${b.station.stationId}|${b.level.level}|${lid}`;
-      const d = Math.round(Math.sqrt((a.level.coordinate.x-b.level.coordinate.x)**2+(a.level.coordinate.z-b.level.coordinate.z)**2)) || 10;
-      adj[kA].push({ key: kB, dist: d, type: 'line', lineId: lid });
-      adj[kB].push({ key: kA, dist: d, type: 'line', lineId: lid });
+      const pts = getPathPoints(a.level.coordinate, b.level.coordinate, a.level.direction, b.level.direction);
+      let totalDist = 0;
+      for (let p = 1; p < pts.length; p++) totalDist += pts[p-1].distanceTo(pts[p]);
+      totalDist = Math.round(totalDist) || 10;
+      adj[kA].push({ key: kB, dist: totalDist, type: 'line', lineId: lid, pathPts: pts });
+      adj[kB].push({ key: kA, dist: totalDist, type: 'line', lineId: lid, pathPts: [...pts].reverse() });
     }
   }
-  // 同站换乘
   for (const st of data.stations) {
     for (let i = 0; i < st.levels.length; i++) {
       for (let j = i + 1; j < st.levels.length; j++) {
         const a = st.levels[i], b = st.levels[j];
         const kA = `${st.stationId}|${a.level}|${a.lineId}`;
         const kB = `${st.stationId}|${b.level}|${b.lineId}`;
-        adj[kA].push({ key: kB, dist: 20, type: 'transfer' });
-        adj[kB].push({ key: kA, dist: 20, type: 'transfer' });
+        const pts = [toVec3(a.coordinate), toVec3(b.coordinate)];
+        adj[kA].push({ key: kB, dist: 15, type: 'transfer', pathPts: pts });
+        adj[kB].push({ key: kA, dist: 15, type: 'transfer', pathPts: [...pts].reverse() });
       }
     }
   }
@@ -624,7 +640,7 @@ function dijkstra(graph, startKeys, endStationId, allowCross) {
       const segments = [];
       for (let i = 1; i < path.length; i++) {
         const e = prevEdge[path[i]];
-        segments.push({ from: path[i-1], to: path[i], type: e ? e.type : '?', lineId: e ? e.lineId : null });
+        segments.push({ from: path[i-1], to: path[i], type: e ? e.type : '?', lineId: e ? e.lineId : null, pathPts: e ? e.pathPts : null });
       }
       return { path, segments, dist: dist[k] };
     }
@@ -657,31 +673,39 @@ function dijkstra(graph, startKeys, endStationId, allowCross) {
 function highlightPath(result, graph) {
   highlightGroup.clear();
   if (!result) return;
-  const { segments } = result;
-  for (const seg of segments) {
+  for (const seg of result.segments) {
     const na = graph.nodes[seg.from], nb = graph.nodes[seg.to];
     if (!na || !nb) continue;
-    const pa = toVec3(na.levelObj.coordinate), pb = toVec3(nb.levelObj.coordinate);
-    const mid = pa.clone().add(pb).multiplyScalar(0.5);
-    const dir = pb.clone().sub(pa).normalize();
-    const segLen = pa.distanceTo(pb);
-    // 直线段管道高亮
-    const curve = new THREE.LineCurve3(pa, pb);
+    const pts = seg.pathPts && seg.pathPts.length >= 2 ? seg.pathPts : [toVec3(na.levelObj.coordinate), toVec3(nb.levelObj.coordinate)];
+
+    // 沿路径创建曲线
+    const curvePts = [];
+    if (seg.type === 'line' && pts.length > 2) {
+      // 有弯道：用 CatmullRom 平滑
+      curvePts.push(...pts);
+    }
+    const fullCurve = curvePts.length >= 2
+      ? new THREE.CatmullRomCurve3(curvePts, false, 'catmullrom', 0)
+      : new THREE.LineCurve3(pts[0], pts[pts.length-1]);
+
     const color = seg.type === 'transfer' ? '#ffaa00' : seg.type === 'walk' ? '#ff7043' : '#ffeb3b';
-    const hGeo = new THREE.TubeGeometry(curve, 32, 3.5, 8, false);
-    const hMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.65, depthTest: true });
+    const hGeo = new THREE.TubeGeometry(fullCurve, 64, 4, 8, false);
+    const hMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthTest: true });
     highlightGroup.add(new THREE.Mesh(hGeo, hMat));
-    // 方向箭头（每200格一个）
-    const arrowCount = Math.max(1, Math.floor(segLen / 200));
+
+    // 方向箭头（沿曲线分布）
+    const totalLen = fullCurve.getLength();
+    const arrowInterval = 150;
+    const arrowCount = Math.max(2, Math.floor(totalLen / arrowInterval));
     for (let a = 0; a < arrowCount; a++) {
       const t = (a + 0.5) / arrowCount;
-      const pos = pa.clone().addScaledVector(dir, segLen * t);
-      const cone = new THREE.ConeGeometry(3, 8, 8, 8);
+      const pt = fullCurve.getPointAt(t);
+      const tangent = fullCurve.getTangentAt(t).normalize();
+      const cone = new THREE.ConeGeometry(5, 14, 8, 8);
       const coneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const arrow = new THREE.Mesh(cone, coneMat);
-      arrow.position.copy(pos);
-      // 让锥体尖端指向行进方向
-      arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+      arrow.position.copy(pt);
+      arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), tangent);
       highlightGroup.add(arrow);
     }
   }
