@@ -1,4 +1,4 @@
-# mik-railway
+# MCRMS-Minecraft Railway Manage System 0.2.0
 
 Minecraft 轨道交通可视化项目，支持 3D 和 2D 两种地图模式。
 
